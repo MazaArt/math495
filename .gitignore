@@ -1,0 +1,6 @@
+.env
+.env.local
+*.md
+/mathqa_model
+/math_data
+/__pycache__
