@@ -19,20 +19,34 @@ def load_jsonl(file_path: str) -> List[Dict]:
 
 def format_qa_pair(question: str, answer: str) -> str:
     """Format question and answer as a training prompt."""
-    # Format as a simple Q&A pair
     prompt = f"Question: {question}\nAnswer: {answer}"
     return prompt
 
 
-def prepare_dataset(file_path: str) -> List[str]:
+def _passes_level_filter(item: Dict, allowed_levels) -> bool:
+    if not allowed_levels:
+        return True
+    level_value = item.get("level") or item.get("type")
+    if level_value is None:
+        return True  # Keep examples without level metadata (e.g., MathQA)
+    return str(level_value).lower() in allowed_levels
+
+
+def prepare_dataset(file_path: str, allowed_levels=None, max_examples: int = None) -> List[str]:
     """Load and format the dataset for training."""
     data = load_jsonl(file_path)
     formatted_data = []
+    allowed_levels_normalized = {lvl.lower() for lvl in allowed_levels} if allowed_levels else None
     
     for item in data:
+        if max_examples and len(formatted_data) >= max_examples:
+            break
+        
+        if not _passes_level_filter(item, allowed_levels_normalized):
+            continue
+        
         question = item.get('question', '')
         answer = item.get('answer', '')
-        # Also check for 'solution' field (MATH dataset format)
         if not answer:
             answer = item.get('solution', '')
         
@@ -42,16 +56,37 @@ def prepare_dataset(file_path: str) -> List[str]:
     return formatted_data
 
 
-def prepare_multiple_datasets(file_paths: List[str]) -> List[str]:
-    """Load and combine multiple datasets."""
+def prepare_multiple_datasets(
+    file_paths: List[str],
+    allowed_levels=None,
+    max_examples_per_dataset: int = None,
+    total_max_examples: int = None,
+) -> List[str]:
+    """Load and combine multiple datasets with optional filtering and deduplication."""
     all_data = []
+    seen_prompts = set()
     for file_path in file_paths:
-        if os.path.exists(file_path):
-            data = prepare_dataset(file_path)
-            all_data.extend(data)
-            print(f"Loaded {len(data)} examples from {file_path}")
-        else:
+        if not os.path.exists(file_path):
             print(f"Warning: {file_path} not found, skipping...")
+            continue
+        
+        data = prepare_dataset(
+            file_path,
+            allowed_levels=allowed_levels,
+            max_examples=max_examples_per_dataset
+        )
+        before_len = len(all_data)
+        for prompt in data:
+            if prompt in seen_prompts:
+                continue
+            if total_max_examples and len(all_data) >= total_max_examples:
+                break
+            seen_prompts.add(prompt)
+            all_data.append(prompt)
+        print(f"Loaded {len(data)} examples from {file_path} ({len(all_data) - before_len} kept after dedup)")
+        
+        if total_max_examples and len(all_data) >= total_max_examples:
+            break
     
     return all_data
 

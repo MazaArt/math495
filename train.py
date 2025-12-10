@@ -2,7 +2,7 @@
 Training script for MathQA LLM
 """
 import os
-import json
+import argparse
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -14,46 +14,75 @@ from datasets import Dataset
 from load_data import prepare_dataset, prepare_multiple_datasets
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train Math LLM on MathQA + MATH")
+    parser.add_argument("--model-name", type=str, default="google/flan-t5-small", help="Hugging Face model name")
+    parser.add_argument("--output-dir", type=str, default="./mathqa_model", help="Where to save checkpoints")
+    parser.add_argument("--mathqa", action=argparse.BooleanOptionalAction, default=True, help="Include MathQA dataset")
+    parser.add_argument("--math", action=argparse.BooleanOptionalAction, default=True, help="Include MATH dataset (downloaded subset)")
+    parser.add_argument("--mathqa-path", type=str, default="math_data/mathqa_questionanswer.jsonl", help="Path to MathQA jsonl")
+    parser.add_argument("--math-path", type=str, default="math_data/math_dataset.jsonl", help="Path to MATH subset jsonl")
+    parser.add_argument("--combined-path", type=str, default="combined_dataset.jsonl", help="Optional precombined jsonl path")
+    parser.add_argument("--math-levels", type=str, help="Comma-separated difficulty levels to include from MATH")
+    parser.add_argument("--max-examples", type=int, help="Total max examples after merge")
+    parser.add_argument("--max-examples-per-dataset", type=int, help="Max examples to keep per dataset before merge")
+    parser.add_argument("--num-train-epochs", type=int, default=3, help="Number of training epochs")
+    parser.add_argument("--per-device-train-batch-size", type=int, default=4, help="Training batch size per device")
+    parser.add_argument("--per-device-eval-batch-size", type=int, default=4, help="Evaluation batch size per device")
+    return parser.parse_args()
+
+
 def main():
-    # Configuration
-    # Model options (all from Hugging Face):
-    # - "gpt2": Small, fast, good for testing
-    # - "distilgpt2": Even smaller/faster version
-    # - "google/flan-t5-small": Better for Q&A tasks (encoder-decoder)
-    # - "google/flan-t5-base": Better performance, larger
-    # - "microsoft/DialoGPT-small": Good for conversational Q&A
-    # - "EleutherAI/gpt-neo-125M": Alternative GPT architecture
-    # - "t5-small": Original T5, good for text-to-text tasks
+    args = parse_args()
+    model_name = args.model_name
+    output_dir = args.output_dir
     
-    model_name = "google/flan-t5-small"  # Better for Q&A than GPT-2
-    # Alternative: "gpt2" for causal LM, or "t5-small" for encoder-decoder
-    output_dir = "./mathqa_model"
+    math_levels = [lvl.strip() for lvl in args.math_levels.split(",")] if args.math_levels else None
     
-    # Dataset files - can specify multiple files to combine
-    data_files = [
-        "mathqa_questionanswer.jsonl",  # Original dataset
-        "combined_dataset.jsonl",  # Combined dataset (if created)
-        "math_data/math_dataset.jsonl",  # MATH dataset (if downloaded)
-    ]
+    candidate_files = []
+    if args.math and os.path.exists(args.math_path):
+        candidate_files.append(args.math_path)
+        print(f"Including MATH subset: {args.math_path}")
+    elif args.math:
+        print(f"Requested MATH subset but missing file: {args.math_path}")
     
-    # Use first available dataset file, or combine multiple
-    available_files = [f for f in data_files if os.path.exists(f)]
+    if args.mathqa and os.path.exists(args.mathqa_path):
+        candidate_files.append(args.mathqa_path)
+        print(f"Including MathQA: {args.mathqa_path}")
+    elif args.mathqa:
+        print(f"Requested MathQA but missing file: {args.mathqa_path}")
+    
+    # Allow optional precombined file
+    if os.path.exists(args.combined_path):
+        print(f"Found precombined dataset: {args.combined_path} (will be merged as well)")
+        candidate_files.append(args.combined_path)
+    
+    available_files = candidate_files
     
     if not available_files:
         print("Error: No dataset files found!")
-        print(f"Looking for: {data_files}")
-        print("\nTo download MATH dataset, run:")
-        print("  python3 download_math_dataset.py")
+        print("To download MATH dataset, run:")
+        print("  python3 download_math_dataset.py --split train --levels level1,level2")
         print("Or to combine datasets:")
         print("  python3 download_math_dataset.py --combine --output combined_dataset.jsonl")
         return
     
     # Load and prepare data
     print("Loading dataset...")
+    print(f"Datasets to load: {available_files}")
     if len(available_files) > 1:
-        formatted_data = prepare_multiple_datasets(available_files)
+        formatted_data = prepare_multiple_datasets(
+            available_files,
+            allowed_levels=math_levels,
+            max_examples_per_dataset=args.max_examples_per_dataset,
+            total_max_examples=args.max_examples,
+        )
     else:
-        formatted_data = prepare_dataset(available_files[0])
+        formatted_data = prepare_dataset(
+            available_files[0],
+            allowed_levels=math_levels,
+            max_examples=args.max_examples,
+        )
     
     # Split into train/validation (80/20)
     split_idx = int(len(formatted_data) * 0.8)
@@ -147,9 +176,9 @@ def main():
     training_args = TrainingArguments(
         output_dir=output_dir,
         overwrite_output_dir=True,
-        num_train_epochs=3,  # Can increase to 5-10 for larger datasets
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=4,
+        num_train_epochs=args.num_train_epochs,
+        per_device_train_batch_size=args.per_device_train_batch_size,
+        per_device_eval_batch_size=args.per_device_eval_batch_size,
         warmup_steps=500,  # Increased for larger dataset
         logging_steps=50,
         eval_steps=200,  # Less frequent for larger dataset

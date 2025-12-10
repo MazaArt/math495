@@ -28,17 +28,23 @@ def generate_answer(question: str, tokenizer, model, model_type: str, max_length
         # During training, we removed "Question:" prefix, so input is just the question text
         # But FLAN-T5 works better with a task instruction
         prompt = f"solve: {question}"
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=256)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=256, padding=True)
+        # Ensure attention mask is set
+        if "attention_mask" not in inputs:
+            inputs["attention_mask"] = (inputs["input_ids"] != tokenizer.pad_token_id).long()
     else:
         # For GPT-style models: use full prompt
         prompt = f"Question: {question}\nAnswer:"
-        inputs = tokenizer.encode(prompt, return_tensors="pt")
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=256, padding=True)
+        if "attention_mask" not in inputs:
+            inputs["attention_mask"] = (inputs["input_ids"] != tokenizer.pad_token_id).long()
     
     # Generate with better parameters
     with torch.no_grad():
         if model_type == "seq2seq":
             outputs = model.generate(
                 inputs["input_ids"],
+                attention_mask=inputs.get("attention_mask"),
                 max_length=max_length,
                 min_length=10,  # Ensure minimum answer length
                 num_return_sequences=1,
