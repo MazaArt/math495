@@ -2,6 +2,6 @@
 .env.local
 *.md
 /mathqa_model
-# /math_data
+/math_data
 /__pycache__
 *.log
