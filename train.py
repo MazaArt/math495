@@ -3,6 +3,7 @@ Training script for MathQA LLM
 """
 import os
 import argparse
+import torch
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -33,6 +34,9 @@ def parse_args():
 
 
 def main():
+    # Suppress tokenizers parallelism warning
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    
     args = parse_args()
     model_name = args.model_name
     output_dir = args.output_dir
@@ -92,6 +96,21 @@ def main():
     print(f"Train examples: {len(train_data)}")
     print(f"Validation examples: {len(val_data)}")
     
+    # Detect device (GPU if available, else CPU)
+    # Priority: CUDA (NVIDIA) > MPS (Apple Silicon) > CPU
+    if torch.cuda.is_available():
+        device = "cuda"
+        print(f"Using device: {device}")
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"CUDA Version: {torch.version.cuda}")
+    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        device = "mps"
+        print(f"Using device: {device} (Apple Silicon GPU)")
+    else:
+        device = "cpu"
+        print(f"Using device: {device}")
+        print("No GPU detected, using CPU (training will be slower)")
+    
     # Load tokenizer and model
     print(f"Loading model: {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -104,6 +123,9 @@ def main():
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name)
         model_type = "causal"
+    
+    # Note: Trainer automatically moves model to device, but we can verify
+    print(f"Model will be trained on: {device}")
     
     # Add padding token if it doesn't exist
     if tokenizer.pad_token is None:
@@ -179,9 +201,9 @@ def main():
         num_train_epochs=args.num_train_epochs,
         per_device_train_batch_size=args.per_device_train_batch_size,
         per_device_eval_batch_size=args.per_device_eval_batch_size,
-        warmup_steps=500,  # Increased for larger dataset
+        warmup_steps=100,  # 10% warmup for better learning rate schedule
         logging_steps=50,
-        eval_steps=200,  # Less frequent for larger dataset
+        eval_steps=200,  # Evaluate every 200 steps
         save_steps=200,  # Must be multiple of eval_steps for load_best_model_at_end
         eval_strategy="steps",
         save_total_limit=3,
@@ -189,7 +211,7 @@ def main():
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         learning_rate=3e-5,  # Slightly lower for more stable training with large dataset
-        fp16=False,
+        fp16=(device == "cuda"),  # Enable mixed precision on CUDA GPUs only (MPS doesn't support fp16)
         gradient_accumulation_steps=2,  # Effective batch size = 4 * 2 = 8
         dataloader_num_workers=2,  # Speed up data loading
     )
