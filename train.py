@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument("--num-train-epochs", type=int, default=3, help="Number of training epochs")
     parser.add_argument("--per-device-train-batch-size", type=int, default=4, help="Training batch size per device")
     parser.add_argument("--per-device-eval-batch-size", type=int, default=4, help="Evaluation batch size per device")
+    parser.add_argument("--learning-rate", type=float, default=3e-5, help="Learning rate")
     return parser.parse_args()
 
 
@@ -201,16 +202,16 @@ def main():
         num_train_epochs=args.num_train_epochs,
         per_device_train_batch_size=args.per_device_train_batch_size,
         per_device_eval_batch_size=args.per_device_eval_batch_size,
-        warmup_steps=100,  # 10% warmup for better learning rate schedule
-        logging_steps=50,
-        eval_steps=200,  # Evaluate every 200 steps
-        save_steps=200,  # Must be multiple of eval_steps for load_best_model_at_end
+        warmup_steps=50,  # Reduced warmup for smaller datasets
+        logging_steps=10,  # More frequent logging for overfitting monitoring
+        eval_steps=30,  # Evaluate more frequently (every epoch for small datasets)
+        save_steps=30,  # Must be multiple of eval_steps for load_best_model_at_end
         eval_strategy="steps",
         save_total_limit=3,
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
-        learning_rate=3e-5,  # Slightly lower for more stable training with large dataset
+        learning_rate=args.learning_rate,  # Slightly lower for more stable training with large dataset
         fp16=(device == "cuda"),  # Enable mixed precision on CUDA GPUs only (MPS doesn't support fp16)
         gradient_accumulation_steps=2,  # Effective batch size = 4 * 2 = 8
         dataloader_num_workers=2,  # Speed up data loading
