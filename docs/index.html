@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Flan-T5-small on Hendrycks’ MATH Dataset</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #222222;
+            --accent: #2d6cdf;
+            --muted: #666666;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 2rem 1.25rem 3rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .page {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .whitebox {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem 1.75rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        p {
+            margin-top: 0.5rem;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .meta {
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .section {
+            margin-top: 1.5rem;
+        }
+
+        ul {
+            margin-top: 0.4rem;
+            padding-left: 1.1rem;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        li+li {
+            margin-top: 0.25rem;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .link-btn {
+            padding: 0.45rem 0.9rem;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            font-size: 0.85rem;
+            background: #f8f9ff;
+        }
+
+        .footer {
+            margin-top: 1.75rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+    </style>
+</head>
+
+<body>
+    <main class="page">
+        <section class="whitebox">
+            <header>
+                <h1>Flan-T5-small LLM Hypertune on Hendrycks’ MATH Dataset</h1>
+
+                <p class="meta">
+                    <strong>Artem Ivaniuk</strong> &middot; <strong>Tyler Hogan</strong><br />
+                    Math 495 – Final Project
+                </p>
+
+                <div class="links">
+                    <a class="link-btn" href="https://github.com/MazaArt/math495" target="_blank"
+                        rel="noopener noreferrer">
+                        View code on GitHub
+                    </a>
+                </div>
+            </header>
+
+            <section class="section">
+                <h2>Project overview</h2>
+                <video style="max-width:100%; height:auto;" controls>
+                    <source src="Math495Video.mp4" type="video/mp4" />
+                    Video didn't load
+                </video>
+            </section>
+
+            <section class="section">
+                <h2>What we did</h2>
+                <ul>
+                    <li>We collected, cleaned, and tokenized a portion of the Hendrycks MATH dataset</li>
+                    <li>Trained a Flan-T5-small LLM model on this dataset </li>
+                    <li>Allowed user to interact with LLM by asking math questions from various subjects and receiving reason-based responses</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Final results</h2>
+                <div>
+                    <img src="Math495Question1.png" alt="Model answer example 1">
+                    <img src="Math495Question2.png" alt="Model answer example 2">
+                </div>
+            </section>
+
+            <p class="footer">
+                For more, visit
+                <a href="https://github.com/MazaArt/math495" target="_blank" rel="noopener noreferrer">
+                    repository README and report
+                </a>.
+            </p>
+        </section>
+    </main>
+</body>
+
+</html>
